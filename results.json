@@ -1,0 +1,93 @@
+{
+  "seeds": 20,
+  "failure_batches": 180,
+  "healthy_batches": 100,
+  "overall_detection_rate": 1.0,
+  "overall_expected_type_rate": 1.0,
+  "overall_top1_root_cause": 1.0,
+  "false_positive_rate": 0.0,
+  "false_positive_batches": 0,
+  "raw_incidents": 254,
+  "after_triage": 180,
+  "alert_reduction": 0.2913385826771654,
+  "modes": {
+    "null_burst": {
+      "detection_rate": 1.0,
+      "expected_type_rate": 1.0,
+      "top1_root_cause": 1.0,
+      "raw_incidents_avg": 2,
+      "primary_type_mode": "contract_violation"
+    },
+    "schema_drift": {
+      "detection_rate": 1.0,
+      "expected_type_rate": 1.0,
+      "top1_root_cause": 1.0,
+      "raw_incidents_avg": 2,
+      "primary_type_mode": "schema_break"
+    },
+    "type_drift": {
+      "detection_rate": 1.0,
+      "expected_type_rate": 1.0,
+      "top1_root_cause": 1.0,
+      "raw_incidents_avg": 2,
+      "primary_type_mode": "contract_violation"
+    },
+    "duplicate_flood": {
+      "detection_rate": 1.0,
+      "expected_type_rate": 1.0,
+      "top1_root_cause": 1.0,
+      "raw_incidents_avg": 1.65,
+      "primary_type_mode": "contract_violation"
+    },
+    "volume_drop": {
+      "detection_rate": 1.0,
+      "expected_type_rate": 1.0,
+      "top1_root_cause": 1.0,
+      "raw_incidents_avg": 1.05,
+      "primary_type_mode": "volume_anomaly"
+    },
+    "outlier_amount": {
+      "detection_rate": 1.0,
+      "expected_type_rate": 1.0,
+      "top1_root_cause": 1.0,
+      "raw_incidents_avg": 1,
+      "primary_type_mode": "contract_violation"
+    },
+    "stale_data": {
+      "detection_rate": 1.0,
+      "expected_type_rate": 1.0,
+      "top1_root_cause": 1.0,
+      "raw_incidents_avg": 1,
+      "primary_type_mode": "freshness_breach"
+    },
+    "format_drift": {
+      "detection_rate": 1.0,
+      "expected_type_rate": 1.0,
+      "top1_root_cause": 1.0,
+      "raw_incidents_avg": 1,
+      "primary_type_mode": "high_heal_rate"
+    },
+    "silent_drift": {
+      "detection_rate": 1.0,
+      "expected_type_rate": 1.0,
+      "top1_root_cause": 1.0,
+      "raw_incidents_avg": 1,
+      "primary_type_mode": "distribution_drift"
+    }
+  },
+  "row_level": {
+    "null_burst": {
+      "recall": 1.0,
+      "precision": 1.0
+    },
+    "outlier_amount": {
+      "recall": 0.7250859106529209,
+      "precision": 1.0
+    }
+  },
+  "throughput": {
+    "rows": 20000,
+    "seconds": 0.608,
+    "rows_per_sec": 32916
+  }
+}

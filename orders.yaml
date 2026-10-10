@@ -1,0 +1,46 @@
+# Data contract for the `orders` data product.
+# Contracts are the single source of truth: Bronze -> Silver is gated by them.
+name: orders
+version: 1.2.0
+owner: data-platform@lakehouseguard.dev
+description: One row per customer order placed on the marketplace.
+sla:
+  freshness_minutes: 120        # newest event_ts must be < 2h old at run time
+  min_rows_per_batch: 200       # hard floor; volume *anomalies* are caught separately
+primary_key: [order_id]
+columns:
+  - name: order_id
+    type: string
+    nullable: false
+    unique: true
+    pattern: '^ORD-[0-9]{8}$'
+  - name: customer_id
+    type: string
+    nullable: false
+    pattern: '^C[0-9]{5}$'
+  - name: city
+    type: string
+    nullable: false
+    allowed_values: [Pune, Mumbai, Bengaluru, Hyderabad, Delhi, Chennai, Nagpur, Nashik]
+    aliases: {Bangalore: Bengaluru, Bombay: Mumbai}   # safe, unambiguous auto-heal mappings
+  - name: category
+    type: string
+    nullable: false
+    allowed_values: [Electronics, Grocery, Fashion, Home, Beauty, Books]
+  - name: amount
+    type: float
+    nullable: false
+    min: 1.0
+    max: 200000.0
+  - name: quantity
+    type: int
+    nullable: false
+    min: 1
+    max: 50
+  - name: payment_mode
+    type: string
+    nullable: false
+    allowed_values: [UPI, CARD, COD, WALLET, NETBANKING]
+  - name: event_ts
+    type: timestamp
+    nullable: false

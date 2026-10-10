@@ -1,0 +1,17 @@
+# One command: build, run the demo, serve the dashboard at http://localhost:8080
+services:
+  demo:
+    build: .
+    volumes:
+      - site:/app/site
+  web:
+    image: nginx:alpine
+    depends_on:
+      demo:
+        condition: service_completed_successfully
+    ports:
+      - "8080:80"
+    volumes:
+      - site:/usr/share/nginx/html:ro
+volumes:
+  site:
