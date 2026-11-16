@@ -1,143 +1,94 @@
-<div align="center">
+![LakehouseGuard reliability observatory](assets/observatory-hero.svg)
 
 # LakehouseGuard
 
-**A contract-driven, self-healing Medallion lakehouse with an offline-first AI incident agent.**
-Bad data is blocked, explained and fixed faster than anyone can open a dashboard.
+Contract-driven lakehouse reliability: validate data, quarantine violations, investigate incidents, and keep remediation bounded by explicit rules.
 
-[![CI](https://github.com/AnyalstRushi/lakehouseguard/actions/workflows/ci.yml/badge.svg)](https://github.com/AnyalstRushi/lakehouseguard/actions/workflows/ci.yml)
-[![Live dashboard](https://img.shields.io/badge/live-dashboard-5b8cff)](https://anyalstrushi.github.io/lakehouseguard/)
-![Python](https://img.shields.io/badge/python-3.11%20%7C%203.12-blue)
-![License](https://img.shields.io/badge/license-MIT-green)
+[Dashboard HTML](sample-dashboard.html) · [PowerPoint deck](LakehouseGuard_Deck.pptx) · [PDF presentation](LakehouseGuard_Deck.pdf) · [Architecture](architecture.md) · [Benchmark evidence](RESULTS.md)
 
-![Dashboard](docs/assets/dashboard.png)
+> Repository status: source files currently live at the repository root. Package structure, installation commands, CI execution and public deployment require verification. An HTML source link is not a running website. No live deployment or passing-test claim is made here.
 
-</div>
+## 01 / See the system
 
-## Why this exists
+![Existing dashboard screenshot](dashboard.png)
 
-Most pipelines are tested at build time and trusted at run time. In production the damage comes from data that is *late, duplicated, renamed, rescaled or quietly different*,
-and from alerts nobody can interpret. LakehouseGuard is the reliability layer around a lakehouse:
+This is the repository's existing dashboard image, not a live operational feed. The demonstration and reported benchmark use synthetic data.
 
-| Layer | What it does |
-|---|---|
-| **Data contracts** (YAML) | Gate Bronze to Silver. Bad rows go to a **Quarantine** with the exact rules they broke, never silently dropped |
-| **Self-healing with guardrails** | Fixes only unambiguous problems (whitespace, casing, `Bangalore` to `Bengaluru`, `₹1,234.50` to `1234.5`) and raises an incident if too much needs fixing |
-| **Circuit breaker** | If more than 50% of a batch fails, the whole batch is held: a heavily filtered partial batch would bias KPIs |
-| **Observability** | Freshness, volume (robust z-score), null drift, schema drift and **silent distribution drift** (PSI) that contracts cannot see |
-| **AI incident agent** | Collapses alerts to one root cause, ranks hypotheses with evidence, retrieves the runbook (TF-IDF RAG), sizes the blast radius, suggests a first patch. **No API key needed** |
-| **FinOps + lineage** | Cost per run and wasted spend, OpenLineage-style events |
-
-## Try it in 60 seconds
-
-```bash
-pip install -e .
-lakehouseguard demo                       # 10 healthy batches, then 9 ways to break the pipeline
-open site/index.html                      # dashboard (no server needed)
-lakehouseguard rca                        # root-cause analysis of the latest incident
-lakehouseguard ask "why did revenue drop?"
-lakehouseguard ask "how do I fix a schema break?"
-```
-
-Or with Docker: `docker compose up --build` and open http://localhost:8080.
-
-## What the agent produces
-
-```text
-### INC-8140E4DB · schema_break · CRITICAL
-**Required column(s) missing: amount**
-
-Most likely causes
-- 75%: Upstream renamed amount to order_amount without a contract version bump
-       (evidence: a column vanished while a new one appeared in the same batch)
-- 25%: Source API or extraction query version changed
-
-Blast radius
-- Rows affected: 1209 of 1209 (100%); batch status: blocked
-- Downstream assets: silver.orders, quarantine.orders, gold.fact_sales_daily, gold.kpi_daily
-
-Remediation (from runbook) ...      Suggested starting point: df.rename(columns={'order_amount': 'amount'})
-```
-
-![Root cause analysis](docs/assets/rca.png)
-
-## Architecture
+## 02 / Follow the decision
 
 ```mermaid
 flowchart LR
-    SRC[(Source)] --> B[Bronze raw]
-    B --> H[Self-heal]
+    SRC[(Source)] --> B[Bronze / raw]
+    B --> H[Bounded self-healing]
     H --> G{Contract gate}
-    G -- clean --> S[Silver]
-    G -- bad rows --> Q[(Quarantine)]
-    G -- schema break / circuit breaker --> X[[Batch blocked]]
+    G -->|Valid rows| S[Silver]
+    G -->|Violations| Q[(Quarantine)]
+    G -->|Schema break or circuit breaker| X[Hold batch]
     S --> GO[Gold marts]
     H --> O[Observability]
-    G --> I[(Incidents)]
+    G --> I[Incidents]
     O --> I
-    I --> A[AI incident agent]
-    A --> R[RCA + dashboard]
-    GO --> R
+    I --> A[Offline incident agent]
+    A --> R[Evidence and runbook guidance]
+    GO --> D[Dashboard]
+    R --> D
+    style G fill:#2447F9,color:#fff,stroke:#2447F9
+    style Q fill:#F5D4C2,color:#172132,stroke:#CF875E
+    style X fill:#F5D4C2,color:#172132,stroke:#CF875E
 ```
 
-Details: [architecture](docs/architecture.md) · [contracts](docs/data-contracts.md) · [observability](docs/observability.md) · [agent](docs/agent.md) · [Azure / Databricks / Fabric mapping](docs/azure-fabric-mapping.md) · [ADRs](docs/adr/)
+The diagram describes the project design. It is not evidence that every component has executed successfully in this checkout.
 
-## Results
+| Reliability boundary | Intended behavior | Read the specification |
+|---|---|---|
+| Contract gate | Route failing records to quarantine with rule context | [Data contracts](data-contracts.md) |
+| Bounded healing | Normalize unambiguous formats; flag excessive repair | [Healing decision](0005-self-healing-with-guardrails.md) |
+| Circuit breaker | Hold heavily failing batches rather than publish biased partial results | [Circuit-breaker decision](0004-circuit-breaker.md) |
+| Observability | Inspect freshness, volume, schema and distribution drift | [Observability](observability.md) |
+| Incident review | Retrieve runbooks and rank evidence-backed hypotheses | [Agent design](agent.md) |
 
-Reproduce: `python benchmarks/run_benchmark.py --seeds 20`. Synthetic, seeded data.
+## 03 / Inspect the incident output
 
-| Metric | Result |
-|---|---|
-| Failure batches injected (9 failure modes x 20 seeds) | 180 |
-| Detected, with the expected incident type | **100%** |
-| False positives on healthy batches | **0 of 100** |
-| Alerts removed by causal triage | 254 to 180 (**29% fewer**) |
-| Row-level gate on null burst (recall / precision) | 100% / 100% |
-| Row-level gate on 400x outliers (recall / precision) | 73% / 100% |
-| Throughput, pure-Python engine | ~33k rows/s |
+![Existing root-cause-analysis screenshot](rca.png)
 
-**Read the caveats** in [benchmarks/RESULTS.md](benchmarks/RESULTS.md): the failure modes and detectors share an author, so 100% means "catches what it was designed against", not "catches everything". The 73% outlier recall is a genuine limitation (some outliers stay below a global `max`).
+The repository describes schema-break investigation, affected downstream assets and suggested remediation. Hypothesis weights are not calibrated probabilities; a proposed patch is not proof of successful or safe automatic repair.
 
-Quality: 98 tests, 100% line coverage (stdlib tracer; parquet-only branches excluded; CI enforces 90% with coverage.py). Developed and tested on Python 3.12 with pandas 3.0; CI runs 3.11 and 3.12 with ruff.
+[Schema-break runbook](schema_break.md) · [Contract violations](contract_violation.md) · [Distribution drift](distribution_drift.md) · [Freshness breach](freshness_breach.md)
 
-## The nine failure modes in the demo
+## 04 / Evidence before scores
 
-`null_burst` · `schema_drift` (a rename) · `type_drift` · `duplicate_flood` · `volume_drop` · `outlier_amount` · `stale_data` (timezone shift) · `format_drift` (auto-healed, but flagged) · `silent_drift` (every value valid, distribution moved 1.8x: only observability sees it)
+Inspect [RESULTS.md](RESULTS.md), [results.json](results.json) and [run_benchmark.py](run_benchmark.py) together before repeating benchmark claims. Earlier README figures have not been rerun as part of this visual refresh.
 
-## Use it on your own data
+Synthetic injected-failure detection does not establish production accuracy. Detection coverage depends on the injected cases; throughput depends on the execution environment. Retain limitations rather than turning benchmark numbers into universal guarantees.
 
-```bash
-lakehouseguard validate my_extract.csv --contract contracts/orders.yaml   # exit 2 on violations: drop into producer CI
-```
+## 05 / Present the project
 
-```python
-from lakehouseguard.contracts import Contract
-from lakehouseguard.pipeline import Pipeline
+- [Editable PowerPoint](LakehouseGuard_Deck.pptx)
+- [PDF deck](LakehouseGuard_Deck.pdf)
+- [Existing dashboard HTML source](sample-dashboard.html)
+- [Interview guide](interview-guide.md)
+- [Azure / Databricks / Fabric mapping](azure-fabric-mapping.md)
 
-pipe = Pipeline("lakehouse_data", Contract.from_yaml("contracts/orders.yaml"))
-result = pipe.run_batch(df, run_ts)         # idempotent per batch_id
-print(result.status, result.incident_types)
-```
+These links point to existing repository files. The decks' contents and browser rendering have not been audited in this refresh.
 
-Optional extras: `pip install -e ".[parquet]"` (Parquet storage), `".[spark]"` (see `examples/spark_engine.py`). Local LLM phrasing: `lakehouseguard ask "..." --ollama llama3.1`.
+## 06 / Engineering decisions
 
-## Repo map
+[Contracts at Bronze–Silver](0001-contracts-at-bronze-silver.md) · [Healthy-run baselines](0002-baseline-from-healthy-runs.md) · [Offline-first agent](0003-offline-first-agent.md) · [Pure-Python storage](0006-pure-python-core-and-storage.md)
 
-```
-src/lakehouseguard/   contracts · healing · observability · pipeline · agent · report · cli · generator · demo
-src/lakehouseguard/knowledge/   runbooks the agent retrieves from
-contracts/            orders.yaml (the data contract)
-tests/                98 tests (unittest style, run with pytest)
-benchmarks/           reproducible benchmark + RESULTS.md
-examples/             PySpark + Delta gate, Airflow DAG (reference, see notes)
-docs/                 architecture, ADRs, Azure mapping, interview guide
-.github/workflows/    CI (lint, tests, coverage, benchmark smoke) and GitHub Pages dashboard
-```
+## Current checkout and next verification
 
-## Honest limits and roadmap
+The current root contains Python modules, tests, runbooks, images and workflow YAML files. Earlier documentation referenced directories that are not present in this checkout.
 
-- Pandas core is single-process; the Spark example is a reference that runs in an optional CI job.
-- The agent is a playbook plus retrieval, not a learner; confidence is a normalised weight, not a calibrated probability.
-- Roadmap: per-segment range rules, embedding retrieval, incremental Gold, dbt-core Gold, OpenLineage to Marquez, auto-created tickets.
+- [x] Link the front-page images and decks to existing paths.
+- [x] Add a distinct Observatory visual identity and readable architecture.
+- [ ] Restore the intended package/test/runbook directory structure after reviewing imports and configuration.
+- [ ] Install and run lint, tests and benchmark smoke checks.
+- [ ] Review root ci.yml and pages.yml before enabling them under .github/workflows/.
+- [ ] Verify a deployed interactive dashboard.
+- [ ] Add a verified animated demo capture, with a static fallback.
 
-MIT licensed. Built by [Rushikesh Wavhal](https://github.com/AnyalstRushi).
+No generated GIF or live animation is claimed by this update. The illustrated hero and architecture are static; interactive behavior belongs in a separately verified web experience.
+
+## License
+
+[MIT](LICENSE). Built by [Rushikesh Wavhal](https://github.com/AnyalstRushi).
