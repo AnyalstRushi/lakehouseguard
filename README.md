@@ -1,4 +1,17 @@
-![LakehouseGuard reliability observatory](assets/observatory-hero.svg)
+<!-- OBSERVATORY_PREVIEWS -->
+![Animated Observatory hero](assets/observatory-hero.gif)
+
+## Architecture in motion
+![Illustrative contract routing](assets/observatory-architecture.gif)
+
+## Benchmark evidence preview
+![Existing benchmark snapshot including limitations](assets/observatory-evidence.gif)
+
+Animation illustrates the design and an existing synthetic benchmark snapshot; it is not live execution or a new benchmark run.
+
+<!-- /OBSERVATORY_PREVIEWS -->
+
+<!-- OBSERVATORY_STATIC_HERO -->
 
 # LakehouseGuard
 
